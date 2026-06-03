@@ -1,0 +1,128 @@
+.phone-connect {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+.phone-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1px solid #335;
+  background: #111122;
+  color: #aac;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.phone-btn:hover {
+  background: #1a1a33;
+  border-color: #5af;
+  color: #5af;
+}
+
+.phone-btn.active {
+  background: #0a1a10;
+  border-color: #3f6;
+  color: #3f6;
+}
+
+.phone-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: #0e0e1a;
+  border: 1px solid #1e1e3a;
+  border-radius: 10px;
+  width: 280px;
+  z-index: 100;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+.phone-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid #1a1a2e;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8af;
+}
+
+.phone-panel-close {
+  background: none;
+  border: none;
+  color: #556;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.phone-panel-close:hover {
+  color: #aac;
+}
+
+.phone-panel-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.phone-step {
+  font-size: 12px;
+  color: #667;
+  align-self: flex-start;
+}
+
+.phone-qr {
+  border-radius: 8px;
+  margin: 4px 0;
+}
+
+.phone-url {
+  font-size: 10px;
+  color: #5af;
+  background: #111122;
+  border: 1px solid #222233;
+  border-radius: 4px;
+  padding: 4px 8px;
+  word-break: break-all;
+  text-align: center;
+  width: 100%;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.phone-go-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #5af;
+  background: #111133;
+  color: #5af;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 4px;
+}
+
+.phone-go-btn:hover {
+  background: #1a1a44;
+}
+
+.phone-status-badge {
+  font-size: 11px;
+  color: #fa3;
+  animation: pulse 1.2s ease-in-out infinite alternate;
+}
+
+.phone-status-badge.has-phone {
+  color: #3f6;
+  animation: none;
+}
