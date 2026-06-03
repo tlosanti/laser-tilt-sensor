@@ -1,0 +1,75 @@
+.rec-panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(10, 10, 20, 0.88);
+  border: 1px solid #1e1e3a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  backdrop-filter: blur(6px);
+  min-width: 160px;
+}
+
+.rec-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #445;
+}
+
+.rec-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.rec-btn {
+  flex: 1;
+  padding: 5px 4px;
+  border-radius: 5px;
+  border: 1px solid #222244;
+  background: #111122;
+  color: #aac;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.1s;
+  white-space: nowrap;
+}
+
+.rec-btn.start:not(.disabled):hover {
+  background: #0a1a0a;
+  border-color: #3f6;
+  color: #3f6;
+}
+
+.rec-btn.stop:not(.disabled):hover {
+  background: #1a0a0a;
+  border-color: #f64;
+  color: #f64;
+}
+
+.rec-btn.save:not(.disabled):hover {
+  background: #0a0f1a;
+  border-color: #5af;
+  color: #5af;
+}
+
+.rec-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.rec-indicator {
+  font-size: 11px;
+  color: #f44;
+  animation: recpulse 0.8s ease-in-out infinite alternate;
+  text-align: center;
+}
+
+@keyframes recpulse {
+  from { opacity: 1; }
+  to   { opacity: 0.3; }
+}

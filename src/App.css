@@ -1,0 +1,310 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #0a0a0f;
+}
+
+/* ── Header ─────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 52px;
+  background: #0e0e1a;
+  border-bottom: 1px solid #1e1e3a;
+  flex-shrink: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.logo {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #5af;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: #556;
+  letter-spacing: 1px;
+}
+
+
+.mode-toggle {
+  display: flex;
+  background: #080810;
+  border: 1px solid #1e1e3a;
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.mode-btn {
+  padding: 4px 14px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: #445;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.mode-btn:hover { color: #778; }
+.mode-btn.active { background: #111133; color: #5af; }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.trigger-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f44;
+  letter-spacing: 1px;
+  animation: pulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 1; }
+  to   { opacity: 0.4; }
+}
+
+.error-badge {
+  font-size: 11px;
+  color: #f66;
+  background: #2a0a0a;
+  border: 1px solid #622;
+  border-radius: 4px;
+  padding: 2px 8px;
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-dot.connected {
+  background: #3f6;
+  box-shadow: 0 0 6px #3f6;
+}
+
+.status-dot.disconnected {
+  background: #444;
+}
+
+.status-label {
+  font-size: 12px;
+  color: #778;
+}
+
+.reset-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #442200;
+  background: #1a0e00;
+  color: #c84;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.reset-btn:hover {
+  background: #2a1500;
+  border-color: #c84;
+  color: #fb6;
+}
+
+.connect-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1px solid #335;
+  background: #111122;
+  color: #aac;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.connect-btn:hover {
+  background: #1a1a33;
+  border-color: #5af;
+  color: #5af;
+}
+
+.connect-btn.active {
+  background: #0a1a10;
+  border-color: #3f6;
+  color: #3f6;
+}
+
+/* ── Main layout ─────────────────────────────────── */
+.main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.scene-area {
+  flex: 1;
+  position: relative;
+}
+
+.demo-badge {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: #556;
+  background: rgba(10, 10, 20, 0.8);
+  border: 1px solid #222233;
+  border-radius: 20px;
+  padding: 4px 14px;
+  pointer-events: none;
+  letter-spacing: 0.5px;
+}
+
+/* ── Sidebar ─────────────────────────────────────── */
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: #0e0e1a;
+  border-left: 1px solid #1e1e3a;
+  overflow-y: auto;
+}
+
+.data-card {
+  padding: 14px 16px;
+  border-bottom: 1px solid #1a1a2e;
+}
+
+.data-card h3 {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #445;
+  margin-bottom: 10px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.data-table td {
+  padding: 3px 4px;
+}
+
+.data-table td:first-child {
+  color: #556;
+  width: 48px;
+}
+
+.data-table td:last-child {
+  color: #cde;
+  text-align: right;
+}
+
+.data-table tr:hover td {
+  background: #111122;
+}
+
+.no-data {
+  font-size: 12px;
+  color: #334;
+  font-style: italic;
+}
+
+.protocol-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  color: #556;
+}
+
+.protocol-info code {
+  background: #111122;
+  border: 1px solid #222233;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: #7af;
+  font-size: 11px;
+}
+
+.protocol-note {
+  color: #334;
+  font-size: 10px;
+}
+
+.log-card {
+  flex: 1;
+}
+
+.log {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  color: #446;
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.log-line {
+  padding: 1px 2px;
+  border-radius: 2px;
+  word-break: break-all;
+}
+
+.log-line.log-csv {
+  color: #557;
+}
+.log-line.log-csv:first-child {
+  color: #7bf;
+}
+.log-line.log-raw {
+  color: #c84;
+  font-style: italic;
+}
+
+.log-trigger {
+  color: #f66 !important;
+}
+
+.log::-webkit-scrollbar {
+  width: 4px;
+}
+
+.log::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.log::-webkit-scrollbar-thumb {
+  background: #222244;
+  border-radius: 2px;
+}
