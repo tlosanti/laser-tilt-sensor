@@ -1,39 +1,83 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
 import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 
-// Initial camera spherical coords matching position (3, 2.5, 4)
-const INIT_DIST = Math.sqrt(3 * 3 + 2.5 * 2.5 + 4 * 4)
-const INIT_PHI  = Math.acos(2.5 / INIT_DIST)          // polar angle from Y
-const INIT_THETA = Math.atan2(3, 4)                     // azimuth
+const INIT_DIST  = Math.sqrt(3 * 3 + 2.5 * 2.5 + 4 * 4)
+const INIT_PHI   = Math.acos(2.5 / INIT_DIST)
+const INIT_THETA = Math.atan2(3, 4)
 
-export default function SensorScene({ rotation }) {
-  const mountRef = useRef(null)
-  const sceneRef = useRef(null)
-  const orbitRef = useRef({ phi: INIT_PHI, theta: INIT_THETA, dist: INIT_DIST })
-  const dragRef  = useRef(null)
+function buildDefaultModel() {
+  const group = new THREE.Group()
+
+  const pcbGeo = new THREE.BoxGeometry(2.4, 0.12, 1.6)
+  const pcb = new THREE.Mesh(pcbGeo, new THREE.MeshStandardMaterial({ color: 0x1a5c2a, roughness: 0.6, metalness: 0.1 }))
+  pcb.castShadow = true
+  group.add(pcb)
+  group.add(new THREE.LineSegments(new THREE.EdgesGeometry(pcbGeo), new THREE.LineBasicMaterial({ color: 0x33aa55 })))
+
+  const chip = new THREE.Mesh(
+    new THREE.BoxGeometry(0.32, 0.08, 0.32),
+    new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3, metalness: 0.6 })
+  )
+  chip.position.set(0, 0.1, 0)
+  group.add(chip)
+
+  for (let i = -1; i <= 1; i += 2)
+    for (let j = -1; j <= 1; j += 2) {
+      const dot = new THREE.Mesh(
+        new THREE.SphereGeometry(0.018, 6, 6),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.6 })
+      )
+      dot.position.set(i * 0.1, 0.15, j * 0.1)
+      group.add(dot)
+    }
+
+  const usb = new THREE.Mesh(
+    new THREE.BoxGeometry(0.28, 0.1, 0.18),
+    new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8, roughness: 0.2 })
+  )
+  usb.position.set(0, 0.05, -0.9)
+  group.add(usb)
+
+  return group
+}
+
+function addAxes(group) {
+  const len = 1.4, headLen = 0.18, headWidth = 0.08
+  const origin = new THREE.Vector3(0, 0.2, 0)
+  group.add(new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), origin, len, 0xff3333, headLen, headWidth))
+  group.add(new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), origin, len, 0x3399ff, headLen, headWidth))
+  group.add(new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), origin, len, 0x33ff66, headLen, headWidth))
+}
+
+const SensorScene = forwardRef(function SensorScene({ rotation }, ref) {
+  const mountRef    = useRef(null)
+  const sceneRef    = useRef(null)
+  const orbitRef    = useRef({ phi: INIT_PHI, theta: INIT_THETA, dist: INIT_DIST })
+  const dragRef     = useRef(null)
+
+  useImperativeHandle(ref, () => ({
+    loadModel: (file) => loadModelFile(file, sceneRef.current),
+    clearModel: () => clearCustomModel(sceneRef.current),
+  }))
 
   useEffect(() => {
     const mount = mountRef.current
-    const w = mount.clientWidth
-    const h = mount.clientHeight
+    const w = mount.clientWidth, h = mount.clientHeight
 
-    // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setSize(w, h)
     renderer.setPixelRatio(window.devicePixelRatio)
     renderer.shadowMap.enabled = true
     mount.appendChild(renderer.domElement)
 
-    // Scene
     const scene = new THREE.Scene()
-
-    // Camera
-    const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100)
+    const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 1000)
     camera.position.set(3, 2.5, 4)
     camera.lookAt(0, 0, 0)
 
-    // Lights
-    scene.add(new THREE.AmbientLight(0xffffff, 0.4))
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5))
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.2)
     dirLight.position.set(5, 8, 5)
     dirLight.castShadow = true
@@ -42,83 +86,31 @@ export default function SensorScene({ rotation }) {
     fillLight.position.set(-5, -2, -3)
     scene.add(fillLight)
 
-    // Grid
     const grid = new THREE.GridHelper(6, 12, 0x222244, 0x111133)
     grid.position.y = -1.2
     scene.add(grid)
 
-    // Board group
+    // boardGroup holds the model + axes and receives all rotations
     const boardGroup = new THREE.Group()
     scene.add(boardGroup)
 
-    // PCB body
-    const pcbGeo = new THREE.BoxGeometry(2.4, 0.12, 1.6)
-    const pcbMat = new THREE.MeshStandardMaterial({ color: 0x1a5c2a, roughness: 0.6, metalness: 0.1 })
-    const pcb = new THREE.Mesh(pcbGeo, pcbMat)
-    pcb.castShadow = true
-    boardGroup.add(pcb)
+    const defaultModel = buildDefaultModel()
+    boardGroup.add(defaultModel)
+    addAxes(boardGroup)
 
-    const edgeGeo = new THREE.EdgesGeometry(pcbGeo)
-    boardGroup.add(new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color: 0x33aa55 })))
+    sceneRef.current = { boardGroup, defaultModel, customModel: null, renderer, scene, camera }
 
-    // IMU chip
-    const chip = new THREE.Mesh(
-      new THREE.BoxGeometry(0.32, 0.08, 0.32),
-      new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3, metalness: 0.6 })
-    )
-    chip.position.set(0, 0.1, 0)
-    boardGroup.add(chip)
-
-    for (let i = -1; i <= 1; i += 2) {
-      for (let j = -1; j <= 1; j += 2) {
-        const dot = new THREE.Mesh(
-          new THREE.SphereGeometry(0.018, 6, 6),
-          new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.6 })
-        )
-        dot.position.set(i * 0.1, 0.15, j * 0.1)
-        boardGroup.add(dot)
-      }
-    }
-
-    // USB-C port
-    const usb = new THREE.Mesh(
-      new THREE.BoxGeometry(0.28, 0.1, 0.18),
-      new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8, roughness: 0.2 })
-    )
-    usb.position.set(0, 0.05, -0.9)
-    boardGroup.add(usb)
-
-    // Axis arrows
-    const arrowLen = 1.4, arrowHeadLen = 0.18, arrowHeadWidth = 0.08
-    const origin = new THREE.Vector3(0, 0.2, 0)
-    boardGroup.add(new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), origin, arrowLen, 0xff3333, arrowHeadLen, arrowHeadWidth))
-    boardGroup.add(new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), origin, arrowLen, 0x3399ff, arrowHeadLen, arrowHeadWidth))
-    boardGroup.add(new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), origin, arrowLen, 0x33ff66, arrowHeadLen, arrowHeadWidth))
-
-    sceneRef.current = { boardGroup, renderer, scene, camera }
-
-    // ── Orbit mouse handlers ──────────────────────────────────────
-    const onMouseDown = (e) => {
-      dragRef.current = { x: e.clientX, y: e.clientY }
-      mount.style.cursor = 'grabbing'
-    }
+    // Orbit
+    const onMouseDown = (e) => { dragRef.current = { x: e.clientX, y: e.clientY }; mount.style.cursor = 'grabbing' }
     const onMouseMove = (e) => {
       if (!dragRef.current) return
-      const dx = e.clientX - dragRef.current.x
-      const dy = e.clientY - dragRef.current.y
-      dragRef.current = { x: e.clientX, y: e.clientY }
       const orbit = orbitRef.current
-      orbit.theta -= dx * 0.008
-      orbit.phi = Math.max(0.1, Math.min(Math.PI - 0.1, orbit.phi + dy * 0.008))
+      orbit.theta -= (e.clientX - dragRef.current.x) * 0.008
+      orbit.phi = Math.max(0.1, Math.min(Math.PI - 0.1, orbit.phi + (e.clientY - dragRef.current.y) * 0.008))
+      dragRef.current = { x: e.clientX, y: e.clientY }
     }
-    const onMouseUp = () => {
-      dragRef.current = null
-      mount.style.cursor = 'grab'
-    }
-    const onWheel = (e) => {
-      e.preventDefault()
-      orbitRef.current.dist = Math.max(2, Math.min(14, orbitRef.current.dist + e.deltaY * 0.01))
-    }
+    const onMouseUp = () => { dragRef.current = null; mount.style.cursor = 'grab' }
+    const onWheel = (e) => { e.preventDefault(); orbitRef.current.dist = Math.max(2, Math.min(40, orbitRef.current.dist + e.deltaY * 0.02)) }
 
     mount.addEventListener('mousedown', onMouseDown)
     window.addEventListener('mousemove', onMouseMove)
@@ -126,27 +118,19 @@ export default function SensorScene({ rotation }) {
     mount.addEventListener('wheel', onWheel, { passive: false })
     mount.style.cursor = 'grab'
 
-    // Resize
-    const onResize = () => {
-      const w2 = mount.clientWidth
-      const h2 = mount.clientHeight
+    const ro = new ResizeObserver(() => {
+      const w2 = mount.clientWidth, h2 = mount.clientHeight
       renderer.setSize(w2, h2)
       camera.aspect = w2 / h2
       camera.updateProjectionMatrix()
-    }
-    const ro = new ResizeObserver(onResize)
+    })
     ro.observe(mount)
 
-    // Animate — update camera from orbit each frame
     let raf
     const animate = () => {
       raf = requestAnimationFrame(animate)
       const { phi, theta, dist } = orbitRef.current
-      camera.position.set(
-        dist * Math.sin(phi) * Math.sin(theta),
-        dist * Math.cos(phi),
-        dist * Math.sin(phi) * Math.cos(theta),
-      )
+      camera.position.set(dist * Math.sin(phi) * Math.sin(theta), dist * Math.cos(phi), dist * Math.sin(phi) * Math.cos(theta))
       camera.lookAt(0, 0, 0)
       renderer.render(scene, camera)
     }
@@ -164,24 +148,87 @@ export default function SensorScene({ rotation }) {
     }
   }, [])
 
-  // Apply rotation from sensor data
+  // Apply rotation
   useEffect(() => {
     if (!sceneRef.current) return
     const { boardGroup } = sceneRef.current
     if (rotation.type === 'quat') {
       boardGroup.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w)
     } else if (rotation.type === 'euler') {
-      const deg = Math.PI / 180
-      boardGroup.rotation.set(
-        rotation.roll  * deg,
-        rotation.yaw   * deg,
-        rotation.pitch * deg,
-        'ZYX'
-      )
+      const d = Math.PI / 180
+      boardGroup.rotation.set(rotation.roll * d, rotation.yaw * d, rotation.pitch * d, 'ZYX')
     } else if (rotation.type === 'demo') {
       boardGroup.rotation.y = rotation.y
     }
   }, [rotation])
 
   return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
+})
+
+export default SensorScene
+
+// ── Model loading helpers ─────────────────────────────────────
+
+function clearCustomModel(refs) {
+  if (!refs) return
+  if (refs.customModel) {
+    refs.boardGroup.remove(refs.customModel)
+    refs.customModel = null
+  }
+  refs.boardGroup.add(refs.defaultModel)
+}
+
+function loadModelFile(file, refs) {
+  if (!refs) return
+  const ext = file.name.split('.').pop().toLowerCase()
+  const url = URL.createObjectURL(file)
+
+  if (ext === 'glb' || ext === 'gltf') {
+    new GLTFLoader().load(url, (gltf) => {
+      URL.revokeObjectURL(url)
+      swapModel(gltf.scene, refs)
+    }, undefined, (e) => { URL.revokeObjectURL(url); console.error(e) })
+
+  } else if (ext === 'stl') {
+    new STLLoader().load(url, (geometry) => {
+      URL.revokeObjectURL(url)
+      geometry.computeVertexNormals()
+      const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0xaaaacc, metalness: 0.3, roughness: 0.5 }))
+      const obj = new THREE.Group()
+      obj.add(mesh)
+      swapModel(obj, refs)
+    }, undefined, (e) => { URL.revokeObjectURL(url); console.error(e) })
+
+  } else if (ext === 'obj') {
+    // Dynamic import so OBJLoader only loads if needed
+    import('three/examples/jsm/loaders/OBJLoader.js').then(({ OBJLoader }) => {
+      new OBJLoader().load(url, (obj) => {
+        URL.revokeObjectURL(url)
+        obj.traverse(child => {
+          if (child.isMesh) child.material = new THREE.MeshStandardMaterial({ color: 0xaaaacc, metalness: 0.3, roughness: 0.5 })
+        })
+        swapModel(obj, refs)
+      }, undefined, (e) => { URL.revokeObjectURL(url); console.error(e) })
+    })
+  }
+}
+
+function swapModel(object, refs) {
+  // Remove old custom model or default model
+  if (refs.customModel) refs.boardGroup.remove(refs.customModel)
+  else refs.boardGroup.remove(refs.defaultModel)
+
+  // Auto-scale to fit within a ~2 unit bounding box
+  const box = new THREE.Box3().setFromObject(object)
+  const size = box.getSize(new THREE.Vector3())
+  const maxDim = Math.max(size.x, size.y, size.z)
+  if (maxDim > 0) object.scale.setScalar(2 / maxDim)
+
+  // Centre the model at origin
+  box.setFromObject(object)
+  const centre = box.getCenter(new THREE.Vector3())
+  object.position.sub(centre)
+
+  refs.customModel = object
+  refs.boardGroup.add(object)
 }

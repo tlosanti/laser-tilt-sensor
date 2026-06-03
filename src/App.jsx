@@ -19,11 +19,28 @@ export default function App() {
   const axisMapRef = useRef(axisMap)
   useEffect(() => { axisMapRef.current = axisMap }, [axisMap])
 
-  const offsetRef  = useRef({ pitch: 0, roll: 0, yaw: 0 })
-  const demoRef    = useRef(null)
-  const demoAngle  = useRef(0)
-  const modeRef    = useRef('live')
+  const offsetRef    = useRef({ pitch: 0, roll: 0, yaw: 0 })
+  const demoRef      = useRef(null)
+  const demoAngle    = useRef(0)
+  const modeRef      = useRef('live')
   useEffect(() => { modeRef.current = mode }, [mode])
+
+  const sceneRef     = useRef(null)
+  const fileInputRef = useRef(null)
+  const [modelName, setModelName] = useState(null)
+
+  const handleModelFile = useCallback((e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    sceneRef.current?.loadModel(file)
+    setModelName(file.name)
+    e.target.value = ''
+  }, [])
+
+  const handleClearModel = useCallback(() => {
+    sceneRef.current?.clearModel()
+    setModelName(null)
+  }, [])
 
   // ── Recording ────────────────────────────────────────────────
   const [recState, setRecState] = useState({ recording: false, hasData: false })
@@ -173,6 +190,21 @@ export default function App() {
           <span className="subtitle">BNO085 · RP2040</span>
         </div>
 
+        <div className="model-loader">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".glb,.gltf,.stl,.obj"
+            style={{ display: 'none' }}
+            onChange={handleModelFile}
+          />
+          {modelName
+            ? <><span className="model-name" title={modelName}>{modelName}</span>
+                <button className="model-btn" onClick={handleClearModel}>✕</button></>
+            : <button className="model-btn" onClick={() => fileInputRef.current.click()}>⬆ Load Model</button>
+          }
+        </div>
+
         <div className="mode-toggle">
           <button className={`mode-btn ${mode === 'live' ? 'active' : ''}`} onClick={() => switchMode('live')}>
             ● Live
@@ -205,7 +237,7 @@ export default function App() {
 
       <div className="main">
         <div className="scene-area">
-          <SensorScene rotation={rotation} />
+          <SensorScene rotation={rotation} ref={sceneRef} />
           <AxisMapPanel axisMap={axisMap} onChange={setAxisMap} />
 
           {mode === 'live' && (

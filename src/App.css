@@ -37,6 +37,39 @@
 }
 
 
+.model-loader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.model-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid #1e1e3a;
+  background: #0e0e1a;
+  color: #7af;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.model-btn:hover {
+  border-color: #5af;
+  color: #5af;
+}
+
+.model-name {
+  font-size: 11px;
+  color: #556;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .mode-toggle {
   display: flex;
   background: #080810;
