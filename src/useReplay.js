@@ -23,26 +23,39 @@ export function useReplay(onFrame) {
   const onFrameRef = useRef(onFrame)
   useEffect(() => { onFrameRef.current = onFrame }, [onFrame])
 
-  const loadFile = useCallback(async () => {
-    try {
-      const [handle] = await window.showOpenFilePicker({
-        startIn: 'documents',
-        types: [{ description: 'CSV', accept: { 'text/csv': ['.csv'] } }],
-      })
-      const file = await handle.getFile()
-      const parsed = parseCSV(await file.text())
-      rowsRef.current = parsed
-      setRows(parsed)
-      setFilename(file.name)
-      cursorRef.current = 0
-      setCursor(0)
-      playingRef.current = false
-      setPlaying(false)
-      if (parsed.length > 0) onFrameRef.current(parsed[0])
-    } catch (e) {
-      if (e.name !== 'AbortError') console.error(e)
-    }
+  const applyFile = useCallback(async (file) => {
+    const parsed = parseCSV(await file.text())
+    rowsRef.current = parsed
+    setRows(parsed)
+    setFilename(file.name)
+    cursorRef.current = 0
+    setCursor(0)
+    playingRef.current = false
+    setPlaying(false)
+    if (parsed.length > 0) onFrameRef.current(parsed[0])
   }, [])
+
+  const loadFile = useCallback(async () => {
+    if ('showOpenFilePicker' in window) {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          startIn: 'documents',
+          types: [{ description: 'CSV', accept: { 'text/csv': ['.csv'] } }],
+        })
+        await applyFile(await handle.getFile())
+      } catch (e) {
+        if (e.name !== 'AbortError') console.error(e)
+      }
+    } else {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = '.csv,text/csv'
+      input.onchange = async () => {
+        if (input.files[0]) await applyFile(input.files[0])
+      }
+      input.click()
+    }
+  }, [applyFile])
 
   const play = useCallback(() => {
     if (!rowsRef.current.length) return
