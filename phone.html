@@ -138,6 +138,25 @@ $('startBtn').addEventListener('click', async () => {
   window.addEventListener('deviceorientation', handleOrientation)
 })
 
+function eulerToQuat(alpha, beta, gamma) {
+  const deg2rad = Math.PI / 180
+  const a = alpha * deg2rad
+  const b = beta * deg2rad
+  const g = gamma * deg2rad
+
+  const ca = Math.cos(a / 2), sa = Math.sin(a / 2)
+  const cb = Math.cos(b / 2), sb = Math.sin(b / 2)
+  const cg = Math.cos(g / 2), sg = Math.sin(g / 2)
+
+  // ZXY intrinsic rotation order (W3C DeviceOrientation convention)
+  return {
+    w: ca * cb * cg - sa * sb * sg,
+    x: ca * sb * cg - sa * cb * sg,
+    y: ca * sb * sg + sa * cb * cg,
+    z: ca * cb * sg + sa * sb * cg,
+  }
+}
+
 function handleOrientation(e) {
   if (!streaming) return
   if (!ws || ws.readyState !== 1) return
@@ -150,17 +169,15 @@ function handleOrientation(e) {
   $('roll').textContent = gamma.toFixed(1) + '°'
   $('yaw').textContent = alpha.toFixed(1) + '°'
 
+  const quaternion = eulerToQuat(alpha, beta, gamma)
+
   const msg = {
     type: 'orientation',
     alpha,
     beta,
     gamma,
+    quaternion,
     timestamp: performance.now(),
-  }
-
-  // If AbsoluteOrientationSensor quaternion is available via the event, include it
-  if (e.quaternion) {
-    msg.quaternion = { w: e.quaternion[3], x: e.quaternion[0], y: e.quaternion[1], z: e.quaternion[2] }
   }
 
   ws.send(JSON.stringify(msg))
