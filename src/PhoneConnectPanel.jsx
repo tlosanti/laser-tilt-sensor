@@ -8,17 +8,24 @@ export default function PhoneConnectPanel({ wsConnected, phoneConnected, onConne
   const canvasRef = useRef(null)
 
   useEffect(() => {
+    if (!open) return
     fetch('/local-ip')
       .then(r => r.json())
       .then(({ ip }) => {
-        const port = location.port || (location.protocol === 'https:' ? '443' : '80')
-        const proto = location.protocol === 'https:' ? 'https' : 'http'
-        setPhoneUrl(`${proto}://${ip}:${port}/phone.html`)
+        // Railway returns a domain name; local returns an IP address
+        const isDomain = !/^(\d+\.){3}\d+$/.test(ip)
+        if (isDomain) {
+          setPhoneUrl(`https://${ip}/phone.html`)
+        } else {
+          const port = location.port || (location.protocol === 'https:' ? '443' : '80')
+          const proto = location.protocol === 'https:' ? 'https' : 'http'
+          setPhoneUrl(`${proto}://${ip}:${port}/phone.html`)
+        }
       })
       .catch(() => {
         setPhoneUrl(`${location.protocol}//${location.hostname}:${location.port}/phone.html`)
       })
-  }, [])
+  }, [open])
 
   useEffect(() => {
     if (canvasRef.current && phoneUrl) {

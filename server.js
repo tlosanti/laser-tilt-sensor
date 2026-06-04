@@ -25,7 +25,8 @@ const server = createServer((req, res) => {
 
   if (url.pathname === '/local-ip') {
     res.setHeader('Content-Type', 'application/json')
-    res.end(JSON.stringify({ ip: getLocalIP() }))
+    const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN
+    res.end(JSON.stringify({ ip: railwayDomain || getLocalIP() }))
     return
   }
 
@@ -33,8 +34,14 @@ const server = createServer((req, res) => {
   try {
     statSync(filePath)
   } catch {
-    // Fall back to index.html for unknown paths
-    filePath = join(DIST, 'index.html')
+    // Check project root for standalone files (e.g. phone.html when dist/ doesn't exist)
+    const rootPath = join(__dirname, url.pathname)
+    try {
+      statSync(rootPath)
+      filePath = rootPath
+    } catch {
+      filePath = join(DIST, 'index.html')
+    }
   }
 
   try {
@@ -99,17 +106,25 @@ server.on('upgrade', (req, socket, head) => {
   }
 })
 
+const VIRTUAL_ADAPTER_RE = /vmware|vmnet|vbox|virtualbox|hyper-v|hyperv|wsl|docker|loopback|bluetooth|pseudo/i
+
 function getLocalIP() {
   const nets = networkInterfaces()
-  const candidates = []
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
-      if (net.family === 'IPv4' && !net.internal) candidates.push(net.address)
+  const real = []
+  const fallback = []
+  for (const [name, addrs] of Object.entries(nets)) {
+    const isVirtual = VIRTUAL_ADAPTER_RE.test(name)
+    for (const net of addrs) {
+      if (net.family === 'IPv4' && !net.internal) {
+        ;(isVirtual ? fallback : real).push(net.address)
+      }
     }
   }
-  return candidates.find(ip => ip.startsWith('192.168.'))
-    || candidates.find(ip => ip.startsWith('10.'))
-    || candidates[0]
+  const pool = real.length ? real : fallback
+  return pool.find(ip => ip.startsWith('192.168.'))
+    || pool.find(ip => ip.startsWith('10.'))
+    || pool.find(ip => ip.startsWith('172.'))
+    || pool[0]
     || 'localhost'
 }
 

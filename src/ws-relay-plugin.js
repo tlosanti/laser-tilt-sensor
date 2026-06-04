@@ -73,19 +73,24 @@ export function wsRelayPlugin() {
   }
 }
 
+const VIRTUAL_ADAPTER_RE = /vmware|vmnet|vbox|virtualbox|hyper-v|hyperv|wsl|docker|loopback|bluetooth|pseudo/i
+
 function getLocalIP() {
   const nets = networkInterfaces()
-  const candidates = []
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
+  const real = []
+  const fallback = []
+  for (const [name, addrs] of Object.entries(nets)) {
+    const isVirtual = VIRTUAL_ADAPTER_RE.test(name)
+    for (const net of addrs) {
       if (net.family === 'IPv4' && !net.internal) {
-        candidates.push(net.address)
+        ;(isVirtual ? fallback : real).push(net.address)
       }
     }
   }
-  // Prefer 192.168.x.x (typical WiFi) over virtual adapter IPs (172.x, 10.x)
-  return candidates.find(ip => ip.startsWith('192.168.'))
-    || candidates.find(ip => ip.startsWith('10.'))
-    || candidates[0]
+  const pool = real.length ? real : fallback
+  return pool.find(ip => ip.startsWith('192.168.'))
+    || pool.find(ip => ip.startsWith('10.'))
+    || pool.find(ip => ip.startsWith('172.'))
+    || pool[0]
     || 'localhost'
 }
