@@ -3,8 +3,10 @@ import SensorScene from './SensorScene.jsx'
 import AxisMapPanel, { defaultAxisMap, applyAxisMap } from './AxisMapPanel.jsx'
 import RecordingPanel, { buildCSV } from './RecordingPanel.jsx'
 import ReplayPanel from './ReplayPanel.jsx'
+import PhoneConnectPanel from './PhoneConnectPanel.jsx'
 import { useReplay } from './useReplay.js'
 import { useSerial } from './useSerial.js'
+import { useWebSocket } from './useWebSocket.js'
 import './App.css'
 
 const DEG = v => typeof v === 'number' ? v.toFixed(1) : '—'
@@ -151,6 +153,12 @@ export default function App() {
   }, [])
 
   const { connected, error, connect, disconnect, softReset } = useSerial(onData)
+  const {
+    connected: wsConnected,
+    phoneConnected,
+    connect: wsConnect,
+    disconnect: wsDisconnect,
+  } = useWebSocket(onData)
 
   const handleConnect = () => {
     if (connected) {
@@ -162,6 +170,19 @@ export default function App() {
     } else {
       connect()
     }
+  }
+
+  const handlePhoneConnect = () => {
+    clearInterval(demoRef.current)
+    wsConnect()
+  }
+
+  const handlePhoneDisconnect = () => {
+    wsDisconnect()
+    demoRef.current = setInterval(() => {
+      demoAngle.current += 0.008
+      setRotation({ type: 'demo', y: demoAngle.current })
+    }, 16)
   }
 
   const switchMode = (m) => {
@@ -229,6 +250,12 @@ export default function App() {
               <button className={`connect-btn ${connected ? 'active' : ''}`} onClick={handleConnect}>
                 {connected ? 'Disconnect' : 'Connect USB'}
               </button>
+              <PhoneConnectPanel
+                wsConnected={wsConnected}
+                phoneConnected={phoneConnected}
+                onConnect={handlePhoneConnect}
+                onDisconnect={handlePhoneDisconnect}
+              />
             </>
           )}
           {mode === 'replay' && <span className="status-label" style={{ color: '#5af' }}>Replay mode</span>}
@@ -251,8 +278,8 @@ export default function App() {
 
           {mode === 'replay' && <ReplayPanel replay={replay} />}
 
-          {mode === 'live' && !connected && (
-            <div className="demo-badge">DEMO — connect sensor for live data</div>
+          {mode === 'live' && !connected && !wsConnected && (
+            <div className="demo-badge">DEMO — connect USB sensor or phone for live data</div>
           )}
         </div>
 
