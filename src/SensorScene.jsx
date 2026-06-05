@@ -51,7 +51,7 @@ function addAxes(group) {
   group.add(new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), origin, len, 0x33ff66, headLen, headWidth))
 }
 
-const SensorScene = forwardRef(function SensorScene({ rotation }, ref) {
+const SensorScene = forwardRef(function SensorScene({ rotation, mountQuat }, ref) {
   const mountRef    = useRef(null)
   const sceneRef    = useRef(null)
   const orbitRef    = useRef({ phi: INIT_PHI, theta: INIT_THETA, dist: INIT_DIST })
@@ -148,19 +148,30 @@ const SensorScene = forwardRef(function SensorScene({ rotation }, ref) {
     }
   }, [])
 
-  // Apply rotation
+  // Apply rotation + mount offset
   useEffect(() => {
     if (!sceneRef.current) return
     const { boardGroup } = sceneRef.current
+    const d = Math.PI / 180
+
+    // Convert any rotation type to a THREE.Quaternion
+    const q = new THREE.Quaternion()
     if (rotation.type === 'quat') {
-      boardGroup.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w)
+      q.set(rotation.x, rotation.y, rotation.z, rotation.w)
     } else if (rotation.type === 'euler') {
-      const d = Math.PI / 180
-      boardGroup.rotation.set(rotation.roll * d, rotation.yaw * d, rotation.pitch * d, 'ZYX')
+      q.setFromEuler(new THREE.Euler(rotation.roll * d, rotation.yaw * d, rotation.pitch * d, 'ZYX'))
     } else if (rotation.type === 'demo') {
-      boardGroup.rotation.y = rotation.y
+      q.setFromEuler(new THREE.Euler(0, rotation.y, 0))
     }
-  }, [rotation])
+
+    // Pre-multiply by mount offset: boardGroup = mountQuat * sensorQuat
+    if (mountQuat) {
+      const m = new THREE.Quaternion(mountQuat.x, mountQuat.y, mountQuat.z, mountQuat.w)
+      boardGroup.quaternion.copy(m).multiply(q)
+    } else {
+      boardGroup.quaternion.copy(q)
+    }
+  }, [rotation, mountQuat])
 
   return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
 })
