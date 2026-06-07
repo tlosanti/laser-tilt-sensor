@@ -23,12 +23,6 @@ const MIME = {
 const server = createServer((req, res) => {
   const url = new URL(req.url, `http://localhost`)
 
-  if (url.pathname === '/phone.html') {
-    res.setHeader('Content-Type', 'text/html')
-    res.end(readFileSync(join(__dirname, 'phone.html')))
-    return
-  }
-
   if (url.pathname === '/local-ip') {
     res.setHeader('Content-Type', 'application/json')
     const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN
