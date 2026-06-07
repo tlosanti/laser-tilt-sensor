@@ -29,14 +29,25 @@
   .dot.on { background: #3f6; box-shadow: 0 0 8px #3f6; }
   .dot.off { background: #444; }
   .dot.warn { background: #fa3; box-shadow: 0 0 8px #fa3; }
+  .btn-row {
+    display: flex; gap: 12px; margin-bottom: 24px;
+  }
   #startBtn {
     padding: 16px 48px; border-radius: 12px; border: 2px solid #5af;
     background: #111133; color: #5af; font-size: 18px; font-weight: 600;
-    cursor: pointer; transition: all 0.2s; margin-bottom: 24px;
+    cursor: pointer; transition: all 0.2s;
   }
   #startBtn:hover { background: #1a1a44; }
   #startBtn:active { transform: scale(0.97); }
   #startBtn:disabled { opacity: 0.4; border-color: #334; color: #556; cursor: default; }
+  #zeroBtn {
+    padding: 16px 24px; border-radius: 12px; border: 2px solid #fa3;
+    background: #13110a; color: #fa3; font-size: 18px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+  #zeroBtn:hover { background: #1e1a0e; }
+  #zeroBtn:active { transform: scale(0.97); }
+  #zeroBtn:disabled { opacity: 0.4; border-color: #334; color: #556; cursor: default; }
   .readings {
     display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
     width: 100%; max-width: 360px; margin-top: 16px;
@@ -46,6 +57,13 @@
   .reading .value { font-size: 24px; font-weight: 600; font-family: 'SF Mono', monospace; color: #7bf; margin-top: 4px; }
   .hz { font-size: 12px; color: #445; margin-top: 16px; }
   .error { color: #f66; font-size: 13px; margin-top: 12px; text-align: center; max-width: 300px; }
+  .orient-tip {
+    display: none; margin-top: 14px; padding: 10px 16px; border-radius: 10px;
+    background: #1a1400; border: 1px solid #554400; color: #ba8;
+    font-size: 12px; text-align: center; max-width: 300px; cursor: pointer;
+    line-height: 1.5;
+  }
+  .orient-tip.visible { display: block; }
 </style>
 </head>
 <body>
@@ -58,7 +76,10 @@
   <span id="wsStatus">Connecting…</span>
 </div>
 
-<button id="startBtn" disabled>Start Sensor</button>
+<div class="btn-row">
+  <button id="startBtn" disabled>Start Sensor</button>
+  <button id="zeroBtn" disabled title="Zero current orientation">Zero</button>
+</div>
 
 <div class="readings">
   <div class="reading"><div class="label">Pitch</div><div class="value" id="pitch">—</div></div>
@@ -68,6 +89,9 @@
 
 <div class="hz" id="hz"></div>
 <div class="error" id="error"></div>
+<div class="orient-tip" id="orientTip" role="status">
+  🔒 Tap to dismiss · Enable rotation lock in your device settings to keep this view stable
+</div>
 
 <script>
 const $ = (id) => document.getElementById(id)
@@ -76,6 +100,43 @@ let ws = null
 let streaming = false
 let frameCount = 0
 let lastHzTime = performance.now()
+let offsetAlpha = 0, offsetBeta = 0, offsetGamma = 0
+let lastRaw = { alpha: 0, beta: 0, gamma: 0 }
+let wakeLock = null
+
+async function acquireWakeLock() {
+  if (!('wakeLock' in navigator)) return
+  try {
+    wakeLock = await navigator.wakeLock.request('screen')
+  } catch {}
+}
+
+function releaseWakeLock() {
+  wakeLock?.release()
+  wakeLock = null
+}
+
+// Screen wake lock is dropped when the page is hidden; re-acquire on return
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && streaming) acquireWakeLock()
+})
+
+async function tryLockOrientation() {
+  try {
+    await screen.orientation.lock('portrait')
+    // Succeeded (Android Chrome in fullscreen / installed PWA)
+  } catch {
+    // Not available — show the persistent tip so the user knows to use the system lock
+    $('orientTip').classList.add('visible')
+  }
+}
+
+function unlockOrientation() {
+  try { screen.orientation.unlock() } catch {}
+  $('orientTip').classList.remove('visible')
+}
+
+$('orientTip').addEventListener('click', () => $('orientTip').classList.remove('visible'))
 
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
@@ -113,6 +174,9 @@ $('startBtn').addEventListener('click', async () => {
   if (streaming) {
     streaming = false
     $('startBtn').textContent = 'Start Sensor'
+    $('zeroBtn').disabled = true
+    releaseWakeLock()
+    unlockOrientation()
     return
   }
 
@@ -134,9 +198,38 @@ $('startBtn').addEventListener('click', async () => {
   $('error').textContent = ''
   streaming = true
   $('startBtn').textContent = 'Stop Sensor'
+  $('zeroBtn').disabled = false
+  acquireWakeLock()
+  tryLockOrientation()
+  tryLockOrientation()
 
   window.addEventListener('deviceorientation', handleOrientation)
 })
+
+$('zeroBtn').addEventListener('click', () => {
+  offsetAlpha = lastRaw.alpha
+  offsetBeta = lastRaw.beta
+  offsetGamma = lastRaw.gamma
+})
+
+function eulerToQuat(alpha, beta, gamma) {
+  const deg2rad = Math.PI / 180
+  const a = alpha * deg2rad
+  const b = beta * deg2rad
+  const g = gamma * deg2rad
+
+  const ca = Math.cos(a / 2), sa = Math.sin(a / 2)
+  const cb = Math.cos(b / 2), sb = Math.sin(b / 2)
+  const cg = Math.cos(g / 2), sg = Math.sin(g / 2)
+
+  // ZXY intrinsic rotation order (W3C DeviceOrientation convention)
+  return {
+    w: ca * cb * cg - sa * sb * sg,
+    x: ca * sb * cg - sa * cb * sg,
+    y: ca * sb * sg + sa * cb * cg,
+    z: ca * cb * sg + sa * sb * cg,
+  }
+}
 
 function handleOrientation(e) {
   if (!streaming) return
@@ -146,21 +239,25 @@ function handleOrientation(e) {
   const beta = e.beta || 0
   const gamma = e.gamma || 0
 
-  $('pitch').textContent = beta.toFixed(1) + '°'
-  $('roll').textContent = gamma.toFixed(1) + '°'
-  $('yaw').textContent = alpha.toFixed(1) + '°'
+  lastRaw = { alpha, beta, gamma }
+
+  const dAlpha = ((alpha - offsetAlpha) % 360 + 360) % 360
+  const dBeta = beta - offsetBeta
+  const dGamma = gamma - offsetGamma
+
+  $('pitch').textContent = dBeta.toFixed(1) + '°'
+  $('roll').textContent = dGamma.toFixed(1) + '°'
+  $('yaw').textContent = dAlpha.toFixed(1) + '°'
+
+  const quaternion = eulerToQuat(dAlpha, dBeta, dGamma)
 
   const msg = {
     type: 'orientation',
     alpha,
     beta,
     gamma,
+    quaternion,
     timestamp: performance.now(),
-  }
-
-  // If AbsoluteOrientationSensor quaternion is available via the event, include it
-  if (e.quaternion) {
-    msg.quaternion = { w: e.quaternion[3], x: e.quaternion[0], y: e.quaternion[1], z: e.quaternion[2] }
   }
 
   ws.send(JSON.stringify(msg))

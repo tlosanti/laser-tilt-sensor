@@ -341,3 +341,97 @@
   background: #222244;
   border-radius: 2px;
 }
+
+/* ── Zero button ─────────────────────────────────── */
+.zero-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #2a4a2a;
+  background: #0a1a0a;
+  color: #4c4;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.zero-btn:hover {
+  background: #112211;
+  border-color: #4c4;
+  color: #6f6;
+}
+
+/* ── Mount orientation panel ─────────────────────── */
+.mount-panel {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(10, 10, 20, 0.88);
+  border: 1px solid #1e1e3a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.mount-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #445;
+  align-self: flex-start;
+}
+
+.mount-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 30px);
+  gap: 3px;
+}
+
+.mount-dir-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 5px;
+  border: 1px solid #222244;
+  background: #111122;
+  color: #778;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mount-dir-btn:hover {
+  border-color: #5af;
+  color: #5af;
+  background: #0d0d22;
+}
+.mount-dir-btn:active {
+  background: #111133;
+}
+.mount-reset {
+  color: #445;
+  font-size: 13px;
+}
+.mount-reset:hover {
+  border-color: #f66;
+  color: #f66;
+}
+
+.mount-yaw {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+}
+.mount-yaw-label {
+  font-size: 10px;
+  color: #334;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}

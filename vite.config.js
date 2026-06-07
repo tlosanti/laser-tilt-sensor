@@ -6,9 +6,10 @@ import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [react(), basicSsl(), wsRelayPlugin()],
+  publicDir: 'models',
   server: {
     host: true,
-    port: 5174,
+    port: 5174,       // also referenced in .claude/launch.json — keep in sync
     strictPort: true,
   },
   build: {

@@ -28,15 +28,19 @@ export function useWebSocket(onData) {
 
       if (msg.type === 'orientation') {
         const { alpha, beta, gamma, quaternion, timestamp } = msg
+        const quat = quaternion
+          ? { w: quaternion.w, x: quaternion.x, y: quaternion.y, z: quaternion.z }
+          : { w: 1, x: 0, y: 0, z: 0 }
+        // Use the phone's own Euler angles directly — they match what the phone displays
+        // and avoid a lossy quatToEuler round-trip that amplifies singularities
         const euler = { pitch: beta || 0, roll: gamma || 0, yaw: alpha || 0 }
 
         const data = {
           type: 'csv',
+          source: 'phone',
           timestamp: Math.round(timestamp),
           accel: { x: 0, y: 0, z: 0 },
-          quat: quaternion
-            ? { w: quaternion.w, x: quaternion.x, y: quaternion.y, z: quaternion.z }
-            : { w: 1, x: 0, y: 0, z: 0 },
+          quat,
           euler,
           trigger: false,
         }

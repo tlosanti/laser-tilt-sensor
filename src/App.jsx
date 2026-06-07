@@ -12,6 +12,28 @@ import './App.css'
 const DEG = v => typeof v === 'number' ? v.toFixed(1) : '—'
 const FIX = v => typeof v === 'number' ? v.toFixed(4) : '—'
 
+// ── Quaternion helpers (no Three.js dep needed in App) ────────
+const S2 = Math.SQRT2
+const quatMul = (a, b) => ({
+  w: a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z,
+  x: a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y,
+  y: a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x,
+  z: a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w,
+})
+const axisAngleQ = (ax, ay, az, deg) => {
+  const r = deg * Math.PI / 360
+  const s = Math.sin(r)
+  return { x: ax*s, y: ay*s, z: az*s, w: Math.cos(r) }
+}
+const IDENTITY_Q = { x: 0, y: 0, z: 0, w: 1 }
+
+// 45° mount steps — pre-multiply = world-space rotation
+const MOUNT_DIRS = [
+  ['↖', 1/S2, 0, -1/S2], ['↑', 1, 0, 0],      ['↗', 1/S2, 0, 1/S2],
+  ['←', 0, 0, -1],        [null, 0, 0, 0],      ['→', 0, 0, 1],
+  ['↙',-1/S2, 0,-1/S2],  ['↓',-1, 0, 0],       ['↘',-1/S2, 0, 1/S2],
+]
+
 export default function App() {
   const [mode, setMode]         = useState('live')
   const [rotation, setRotation] = useState({ type: 'demo', y: 0 })
@@ -22,27 +44,43 @@ export default function App() {
   useEffect(() => { axisMapRef.current = axisMap }, [axisMap])
 
   const offsetRef    = useRef({ pitch: 0, roll: 0, yaw: 0 })
+  const latestEulerRef = useRef({ pitch: 0, roll: 0, yaw: 0 })
+  const [mountQuat, setMountQuat] = useState(IDENTITY_Q)
   const demoRef      = useRef(null)
   const demoAngle    = useRef(0)
   const modeRef      = useRef('live')
   useEffect(() => { modeRef.current = mode }, [mode])
 
-  const sceneRef     = useRef(null)
-  const fileInputRef = useRef(null)
+  const sceneRef          = useRef(null)
+  const fileInputRef      = useRef(null)
   const [modelName, setModelName] = useState(null)
+  const phoneModelRef     = useRef(false) // true when we auto-loaded the phone model
 
   const handleModelFile = useCallback((e) => {
     const file = e.target.files[0]
     if (!file) return
     sceneRef.current?.loadModel(file)
     setModelName(file.name)
+    phoneModelRef.current = false // user took manual control
     e.target.value = ''
   }, [])
 
   const handleClearModel = useCallback(() => {
     sceneRef.current?.clearModel()
     setModelName(null)
+    phoneModelRef.current = false
   }, [])
+
+  const handleZero = useCallback(() => {
+    offsetRef.current = { ...latestEulerRef.current }
+  }, [])
+
+  const rotateMountBy = useCallback((ax, ay, az, deg) => {
+    const delta = axisAngleQ(ax, ay, az, deg)
+    setMountQuat(prev => quatMul(delta, prev)) // pre-multiply = world-space
+  }, [])
+
+  const resetMount = useCallback(() => setMountQuat(IDENTITY_Q), [])
 
   // ── Recording ────────────────────────────────────────────────
   const [recState, setRecState] = useState({ recording: false, hasData: false })
@@ -125,14 +163,24 @@ export default function App() {
     if (modeRef.current === 'replay') return
     setLatest(data)
     if (data.type === 'csv') {
+      latestEulerRef.current = data.euler
       clearInterval(demoRef.current)
-      if (data.trigger) offsetRef.current = { ...data.euler }
-      const zeroed = {
-        pitch: data.euler.pitch - offsetRef.current.pitch,
-        roll:  data.euler.roll  - offsetRef.current.roll,
-        yaw:   data.euler.yaw   - offsetRef.current.yaw,
+      if (data.source === 'phone') {
+        const zeroed = {
+          pitch: data.euler.pitch - offsetRef.current.pitch,
+          roll:  data.euler.roll  - offsetRef.current.roll,
+          yaw:   data.euler.yaw   - offsetRef.current.yaw,
+        }
+        setRotation(applyAxisMap(zeroed, axisMapRef.current))
+      } else {
+        if (data.trigger) offsetRef.current = { ...data.euler }
+        const zeroed = {
+          pitch: data.euler.pitch - offsetRef.current.pitch,
+          roll:  data.euler.roll  - offsetRef.current.roll,
+          yaw:   data.euler.yaw   - offsetRef.current.yaw,
+        }
+        setRotation(applyAxisMap(zeroed, axisMapRef.current))
       }
-      setRotation(applyAxisMap(zeroed, axisMapRef.current))
       if (recordingRef.current) {
         const t = Math.round(performance.now() - recStartTimeRef.current)
         recRowsRef.current.push({
@@ -159,6 +207,25 @@ export default function App() {
     connect: wsConnect,
     disconnect: wsDisconnect,
   } = useWebSocket(onData)
+
+  // Switch to iPhone model when phone connects; restore default on disconnect
+  // useEffect(() => {
+  //   if (phoneConnected) {
+  //     fetch('/iPhone_15_Pro.stl')
+  //       .then(r => r.ok ? r.blob() : Promise.reject())
+  //       .then(blob => {
+  //         const file = new File([blob], 'iPhone_15_Pro.stl')
+  //         sceneRef.current?.loadModel(file)
+  //         setModelName('iPhone (phone mode)')
+  //         phoneModelRef.current = true
+  //       })
+  //       .catch(() => {})
+  //   } else if (phoneModelRef.current) {
+  //     sceneRef.current?.clearModel()
+  //     setModelName(null)
+  //     phoneModelRef.current = false
+  //   }
+  // }, [phoneConnected])
 
   const handleConnect = () => {
     if (connected) {
@@ -238,6 +305,9 @@ export default function App() {
         <div className="header-right">
           {error && <span className="error-badge">{error}</span>}
           {mode === 'live' && csv?.trigger && <span className="trigger-badge">● ZERO</span>}
+          {mode === 'live' && (connected || wsConnected) && (
+            <button className="zero-btn" onClick={handleZero} title="Zero current orientation">⊙ Zero</button>
+          )}
           {mode === 'live' && (
             <>
               <div className={`status-dot ${connected ? 'connected' : 'disconnected'}`} />
@@ -264,7 +334,7 @@ export default function App() {
 
       <div className="main">
         <div className="scene-area">
-          <SensorScene rotation={rotation} ref={sceneRef} />
+          <SensorScene rotation={rotation} mountQuat={mountQuat} ref={sceneRef} />
           <AxisMapPanel axisMap={axisMap} onChange={setAxisMap} />
 
           {mode === 'live' && (
@@ -281,6 +351,22 @@ export default function App() {
           {mode === 'live' && !connected && !wsConnected && (
             <div className="demo-badge">DEMO — connect USB sensor or phone for live data</div>
           )}
+
+          <div className="mount-panel">
+            <div className="mount-title">Orient Model</div>
+            <div className="mount-grid">
+              {MOUNT_DIRS.map(([lbl, ax, ay, az], i) =>
+                lbl
+                  ? <button key={i} className="mount-dir-btn" onClick={() => rotateMountBy(ax, ay, az, 45)}>{lbl}</button>
+                  : <button key={i} className="mount-dir-btn mount-reset" onClick={resetMount} title="Reset orientation">⊙</button>
+              )}
+            </div>
+            <div className="mount-yaw">
+              <button className="mount-dir-btn" onClick={() => rotateMountBy(0, 1, 0, -45)}>↺</button>
+              <span className="mount-yaw-label">Yaw</span>
+              <button className="mount-dir-btn" onClick={() => rotateMountBy(0, 1, 0,  45)}>↻</button>
+            </div>
+          </div>
         </div>
 
         <aside className="sidebar">
