@@ -35,6 +35,22 @@ const MOUNT_DIRS = [
 ]
 
 export default function App() {
+  const [showMobileWarning, setShowMobileWarning] = useState(
+    () => window.innerWidth < 1024 && !localStorage.getItem('mobile-warning-dismissed')
+  )
+  const [screenSize, setScreenSize] = useState({ w: window.innerWidth, h: window.innerHeight })
+
+  useEffect(() => {
+    const onResize = () => setScreenSize({ w: window.innerWidth, h: window.innerHeight })
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  const dismissMobileWarning = () => {
+    localStorage.setItem('mobile-warning-dismissed', '1')
+    setShowMobileWarning(false)
+  }
+
   const [mode, setMode]         = useState('live')
   const [rotation, setRotation] = useState({ type: 'demo', y: 0 })
   const [latest, setLatest]     = useState(null)
@@ -271,6 +287,25 @@ export default function App() {
   const csv = latest?.type === 'csv' ? latest : null
 
   return (
+    <>
+    {showMobileWarning && (
+      <div
+        className="mobile-warning-overlay"
+        style={{ width: screenSize.w, height: screenSize.h }}
+        onClick={dismissMobileWarning}
+      >
+        <div className="mobile-warning-modal" onClick={e => e.stopPropagation()}>
+          <div className="mobile-warning-icon">🖥️</div>
+          <h2 className="mobile-warning-title">Best on Desktop</h2>
+          <p className="mobile-warning-body">
+            This app is designed for desktop browsers. On mobile the layout may not display correctly.
+          </p>
+          <button className="mobile-warning-btn" onClick={dismissMobileWarning}>
+            Got it
+          </button>
+        </div>
+      </div>
+    )}
     <div className="app">
       <header className="header">
         <div className="header-left">
@@ -439,5 +474,6 @@ export default function App() {
         </aside>
       </div>
     </div>
+    </>
   )
 }

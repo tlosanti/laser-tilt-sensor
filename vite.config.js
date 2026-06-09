@@ -16,7 +16,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        phone: resolve(__dirname, 'phone.html'),
       },
     },
   },
