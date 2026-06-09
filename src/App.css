@@ -1,3 +1,64 @@
+/* ── Mobile warning modal ────────────────────────── */
+.mobile-warning-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.mobile-warning-modal {
+  background: #0e0e1a;
+  border: 1px solid #1e1e3a;
+  border-radius: 16px;
+  padding: 36px 32px 28px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(85, 170, 255, 0.08);
+}
+
+.mobile-warning-icon {
+  font-size: 40px;
+  margin-bottom: 16px;
+}
+
+.mobile-warning-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #cde;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.mobile-warning-body {
+  font-size: 14px;
+  color: #778;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.mobile-warning-btn {
+  padding: 10px 32px;
+  border-radius: 8px;
+  border: 1px solid #5af;
+  background: transparent;
+  color: #5af;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mobile-warning-btn:hover {
+  background: #5af;
+  color: #0a0a0f;
+}
+
 .app {
   display: flex;
   flex-direction: column;
